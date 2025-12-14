@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Titik Evakuasi - Masjid Agung Palabuhanratu" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [106.5539, -7.0147]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Titik Evakuasi - SMP Negeri 1 Palabuhanratu" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [106.5552, -7.0175]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Titik Evakuasi - Alun-Alun Palabuhanratu" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [106.5570, -7.0160]
+      }
+    }
+  ]
+}
