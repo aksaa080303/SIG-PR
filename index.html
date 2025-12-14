@@ -44,6 +44,16 @@
         margin-right: 8px;
         opacity: 0.8;
       }
+
+      @keyframes shake {
+  0%   { transform: translate(0, 0); }
+  20%  { transform: translate(-2px, 2px); }
+  40%  { transform: translate(2px, -2px); }
+  60%  { transform: translate(-2px, -2px); }
+  80%  { transform: translate(2px, 2px); }
+  100% { transform: translate(0, 0); }
+}
+
       
 
       /* ===============================
@@ -104,6 +114,14 @@
         style="width:100%; padding:8px; margin-top:6px;">
         🧪 Test Sirine
         </button>
+        <button onclick="simulasiGempa()" style="width:100%;margin-top:6px;">
+  🚨 Simulasi Gempa
+</button>
+
+<button onclick="stopGempa()" style="width:100%;margin-top:6px;">
+  ⛔ Hentikan Gempa
+</button>
+
 
 
 
@@ -128,17 +146,118 @@
 
     <audio id="siren" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"></audio>
 
+   
+        
     <!-- ===============================
           KODE BARU
         =============================== -->
     <script>
+      var gempaAktif = false;
+      var pusatGempaMarker = null;
+      var gempaTimer = null;
+      var magnitudoGempa = 0;
+
+
       var map = L.map('map').setView([-6.988, 106.548], 13);
 
-        /* ==============================
+
+  function generateMagnitudo() {
+  return (Math.random() * (8.5 - 4.5) + 4.5).toFixed(1);
+}
+
+function getShakeSpeed(mag) {
+  if (mag < 5.5) return "shake 0.8s infinite";
+  if (mag < 6.5) return "shake 0.5s infinite";
+  return "shake 0.2s infinite";
+}
+
+
+ function simulasiGempa() {
+  if (gempaAktif) return;
+
+  gempaAktif = true;
+
+  magnitudoGempa = generateMagnitudo();
+
+  let pusatGempa = [-6.99 + (Math.random() - 0.5) * 0.02,
+                    106.55 + (Math.random() - 0.5) * 0.02];
+
+  // Marker pusat gempa
+  if (pusatGempaMarker) {
+    map.removeLayer(pusatGempaMarker);
+  }
+
+  pusatGempaMarker = L.circleMarker(pusatGempa, {
+    radius: 12,
+    color: "red",
+    fillColor: "red",
+    fillOpacity: 0.8
+  }).addTo(map)
+    .bindPopup("📍 Pusat Gempa<br>Magnitudo: M " + magnitudoGempa)
+    .openPopup();
+
+  map.setView(pusatGempa, 13);
+
+  // Warning text
+  document.getElementById("warningText").innerHTML =
+    `<b style="color:red">⚠️ GEMPA M ${magnitudoGempa}</b><br>
+     Pusat gempa terdeteksi.`;
+
+  // Sirine aktif
+  let siren = document.getElementById("siren");
+  siren.loop = true;
+  siren.currentTime = 0;
+  siren.play();
+
+  // Getaran bertingkat
+  document.getElementById("map").style.animation =
+    getShakeSpeed(magnitudoGempa);
+
+  // ⏱️ JEDA 10 DETIK → TSUNAMI
+  gempaTimer = setTimeout(() => {
+    if (magnitudoGempa >= 6.5) {
+      document.getElementById("warningText").innerHTML =
+        "<b style='color:red'>🌊 POTENSI TSUNAMI!</b><br>" +
+        "Segera evakuasi melalui jalur resmi!";
+    }
+  }, 10000);
+}
+
+
+
+function stopGempa() {
+  gempaAktif = false;
+
+  let siren = document.getElementById("siren");
+  siren.pause();
+  siren.currentTime = 0;
+
+  document.getElementById("map").style.animation = "none";
+
+  if (gempaTimer) clearTimeout(gempaTimer);
+
+  document.getElementById("warningText").innerHTML =
+    "<b style='color:green'>✅ Kondisi normal</b><br>Tetap waspada.";
+}
+
+
+
+
+function stopGempa() {
+  gempaAktif = false;
+  document.getElementById("map").style.animation = "none";
+  alert("✅ Getaran gempa berhenti.\nMenunggu informasi lanjutan.");
+}
+
+      
+      /* ==============================
    GPS SIMULATION VARIABLES
 ============================== */
       var gpsMarker = null;
       var sirenActive = false;
+      var blinkInterval = null;
+      var blinkOn = false;
+
 
       var gpsPath = [];
       var gpsPolyline = L.polyline([], {
@@ -226,6 +345,9 @@
       var jalur4 = buatJalurEvakuasi([
         [-6.9858, 106.5434], [-6.9865, 106.5507], [-6.9844, 106.5519]
       ], "Jalur Evakuasi 4");
+
+      var jalurEvakuasiList = [jalur1, jalur2, jalur3, jalur4];
+
 
       var zonaTinggi = L.polygon([
         [-7.002916808170778, 106.54154515386834], 
@@ -352,6 +474,42 @@ function updateGPSMarker() {
 }
 
 /* ==============================
+   BLINK EVACUATION ROUTE
+============================== */
+function startBlinkingRoutes() {
+  if (blinkInterval !== null) return; // cegah dobel interval
+
+  blinkInterval = setInterval(() => {
+    blinkOn = !blinkOn;
+
+    jalurEvakuasiList.forEach(jalur => {
+      jalur.setStyle({
+        color: blinkOn ? "red" : "blue",
+        weight: blinkOn ? 8 : 6,
+        opacity: blinkOn ? 1 : 0.5
+      });
+    });
+  }, 500); // kedip tiap 0.5 detik
+}
+
+function stopBlinkingRoutes() {
+  if (blinkInterval !== null) {
+    clearInterval(blinkInterval);
+    blinkInterval = null;
+  }
+
+  jalurEvakuasiList.forEach(jalur => {
+    jalur.setStyle({
+      color: "blue",
+      weight: 6,
+      opacity: 1
+    });
+  });
+}
+
+
+
+/* ==============================
    WARNING SYSTEM
 ============================== */
 function checkDangerZone(latlng) {
@@ -373,6 +531,8 @@ function checkDangerZone(latlng) {
       siren.play();
       sirenActive = true;
     }
+    
+    startBlinkingRoutes();
 
   } else {
     warningText.innerHTML =
@@ -381,6 +541,9 @@ function checkDangerZone(latlng) {
     // 📴 Matikan sirine saat aman
     siren.pause();
     sirenActive = false;
+
+    stopBlinkingRoutes();
+
   }
 }
 
